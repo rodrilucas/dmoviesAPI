@@ -19,37 +19,37 @@ const moviesController = new MoviesController();
 router.get(
   "/movies/suggestions",
   validateQuery(suggestionSchema),
-  catchAsync(moviesController.getSuggestionsByKeyword.bind(moviesController))
+  catchAsync(moviesController.getSuggestionsByKeyword)
 );
 
 router.get(
   "/movies",
   validateQuery(paginationSchema),
-  catchAsync(moviesController.getMoviesPaginated.bind(moviesController))
+  catchAsync(moviesController.getMoviesPaginated)
 );
 
 router.post(
   "/movies",
   validateBody(filtersSchema),
-  catchAsync(moviesController.getMoviesByFilterPaginated.bind(moviesController))
+  catchAsync(moviesController.getMoviesByFilterPaginated)
 );
 
 router.get(
   "/movies/search",
   validateQuery(searchQuerySchema),
-  catchAsync(moviesController.searchMovies.bind(moviesController))
+  catchAsync(moviesController.searchMovies)
 );
 
 router.post(
   "/movies/update",
   validateBody(updatePopularMoviesSchema),
-  catchAsync(moviesController.updatePopularMovies.bind(moviesController))
+  catchAsync(moviesController.updatePopularMovies)
 );
 
 router.get(
   "/movies/:id",
   validateParams(movieIdParamSchema),
-  catchAsync(moviesController.getMovieById.bind(moviesController))
+  catchAsync(moviesController.getMovieById)
 );
 
 export { router };

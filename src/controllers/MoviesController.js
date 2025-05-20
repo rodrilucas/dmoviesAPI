@@ -10,7 +10,7 @@ export class MoviesController {
     this.#tmdbService = new TheMovieDBService();
   }
 
-  async updatePopularMovies(req, res) {
+  updatePopularMovies = async (req, res) => {
     const { pages } = req.body;
 
     const movies = await this.#tmdbService.fetchPopularMovies(pages);
@@ -29,10 +29,11 @@ export class MoviesController {
       message: "Filmes atualizados com sucesso!",
       total: movies.length,
     });
-  }
+  };
 
-  async getSuggestionsByKeyword(req, res) {
+  getSuggestionsByKeyword = async (req, res) => {
     const { keyword, limit } = req.query;
+
     const movies = await this.#moviesService.getSuggestionsByKeyword(
       keyword,
       Number(limit) || 5
@@ -41,15 +42,18 @@ export class MoviesController {
     res.json({
       movies,
     });
-  }
+  };
 
-  async getMoviesPaginated(req, res) {
+  getMoviesPaginated = async (req, res) => {
     const { page, limit, sort_by } = req.query;
+
     let sortBy = null;
     let sortOrder = null;
+
     if (sort_by) {
       [sortBy, sortOrder] = sort_by.join(".");
     }
+
     const data = await this.#moviesService.getMoviesPaginated(
       page,
       limit,
@@ -58,21 +62,25 @@ export class MoviesController {
     );
 
     res.json(data);
-  }
+  };
 
-  async getMoviesByFilterPaginated(req, res) {
+  getMoviesByFilterPaginated = async (req, res) => {
     const filters = req.body;
+    
     const data = await this.#moviesService.getMoviesByFilterPaginated(filters);
     res.json(data);
-  }
+  };
 
   async searchMovies(req, res) {
     const { query, page = 1, sort_by } = req.query;
+
     let sortBy = null;
     let sortOrder = null;
+
     if (sort_by) {
       [sortBy, sortOrder] = sort_by.join(".");
     }
+
     const pageData = await this.#moviesService.getMoviePageData(query, page);
 
     if (pageData) {
@@ -94,7 +102,6 @@ export class MoviesController {
       query,
       page
     );
-
 
     if (moviesFromAPI.length === 0) {
       return res.status(404).json({ message: "Nenhum filme encontrado." });
@@ -120,7 +127,7 @@ export class MoviesController {
     });
   }
 
-  async getMovieById(req, res) {
+  getMovieById = async (req, res) => {
     const { id } = req.params;
 
     const movie = await this.#moviesService.getMovieById(id);
@@ -137,5 +144,5 @@ export class MoviesController {
 
     await this.#moviesService.saveOrUpdateMovie(apiMovie);
     res.json(apiMovie);
-  }
+  };
 }
