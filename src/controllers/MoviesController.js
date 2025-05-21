@@ -68,10 +68,11 @@ export class MoviesController {
     const filters = req.body;
     
     const data = await this.#moviesService.getMoviesByFilterPaginated(filters);
+
     res.json(data);
   };
 
-  async searchMovies(req, res) {
+  searchMovies = async (req, res) => {
     const { query, page = 1, sort_by } = req.query;
 
     let sortBy = null;
