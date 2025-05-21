@@ -12,9 +12,13 @@ import {
   suggestionSchema,
   filtersSchema,
 } from "../middlewares/index.js";
+import { MoviesService } from "../services/MoviesService.js";
+import { TheMovieDBService } from "../services/TMDBService.js";
 
 const router = express.Router();
-const moviesController = new MoviesController();
+const moviesService = new MoviesService(); 
+const tmdbService = new TheMovieDBService();
+const moviesController = new MoviesController(moviesService, tmdbService);
 
 router.get(
   "/movies/suggestions",

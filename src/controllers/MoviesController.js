@@ -1,15 +1,12 @@
-import { TheMovieDBService } from "../services/TMDBService.js";
-import { MoviesService } from "../services/MoviesService.js";
-
 export class MoviesController {
-  #tmdbService;
   #moviesService;
+  #tmdbService;
 
-  constructor() {
-    this.#moviesService = new MoviesService();
-    this.#tmdbService = new TheMovieDBService();
+  constructor(moviesService, tmdbService) {
+    this.#moviesService = moviesService;
+    this.#tmdbService = tmdbService;
   }
-
+  
   updatePopularMovies = async (req, res) => {
     const { pages } = req.body;
 
@@ -66,7 +63,7 @@ export class MoviesController {
 
   getMoviesByFilterPaginated = async (req, res) => {
     const filters = req.body;
-    
+
     const data = await this.#moviesService.getMoviesByFilterPaginated(filters);
 
     res.json(data);
@@ -126,7 +123,7 @@ export class MoviesController {
       totalPages: totalPages,
       totalResults: totalResults,
     });
-  }
+  };
 
   getMovieById = async (req, res) => {
     const { id } = req.params;
