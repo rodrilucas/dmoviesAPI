@@ -3,7 +3,7 @@ import { normalizeQuery } from "../utils/normalizeQuery.js";
 import { AppError } from "../errors/AppError.js";
 
 export class MoviesService {
-  async saveOrUpdateMovies(movies) {
+  saveOrUpdateMovies = async (movies) => {
     if (!Array.isArray(movies)) {
       throw new AppError("A lista de filmes deve ser um array.", 400);
     }
@@ -11,11 +11,14 @@ export class MoviesService {
     try {
       await Promise.all(movies.map((movie) => this.saveOrUpdateMovie(movie)));
     } catch {
-      throw new AppError("Erro ao salvar ou atualizar filmes no banco de dados.", 500);
+      throw new AppError(
+        "Erro ao salvar ou atualizar filmes no banco de dados.",
+        500
+      );
     }
-  }
+  };
 
-  async saveOrUpdateMovie(movie) {
+  saveOrUpdateMovie = async (movie) => {
     if (!movie || typeof movie !== "object") {
       throw new AppError("Movie deve ser um objeto.");
     }
@@ -31,11 +34,14 @@ export class MoviesService {
         .onConflict("id")
         .merge();
     } catch {
-      throw new AppError("Erro ao salvar ou atualizar filme no banco de dados.", 500);
+      throw new AppError(
+        "Erro ao salvar ou atualizar filme no banco de dados.",
+        500
+      );
     }
-  }
+  };
 
-  async getMoviesPaginated(page = 1, limit = 20, sortBy, sortOrder) {
+  getMoviesPaginated = async (page = 1, limit = 20, sortBy, sortOrder) => {
     try {
       let query = db("movies");
 
@@ -58,10 +64,14 @@ export class MoviesService {
         movies,
       };
     } catch {
-      throw new AppError("Erro ao buscar filmes paginados no banco de dados.", 500);
+      throw new AppError(
+        "Erro ao buscar filmes paginados no banco de dados.",
+        500
+      );
     }
-  }
-  async getMoviesByFilterPaginated(filters) {
+  };
+  
+  getMoviesByFilterPaginated = async (filters) => {
     try {
       let query = db("movies");
 
@@ -109,9 +119,9 @@ export class MoviesService {
     } catch (err) {
       throw new AppError("Erro ao filtrar filmes no banco de dados.", 500);
     }
-  }
+  };
 
-  async getSuggestionsByKeyword(keyword, limit = 5) {
+  getSuggestionsByKeyword = async (keyword, limit = 5) => {
     try {
       const query = db("movies")
         .whereILike("title", `%${keyword}%`)
@@ -123,17 +133,17 @@ export class MoviesService {
     } catch (err) {
       throw new AppError("Erro ao buscar sugestões no banco de dados.", 500);
     }
-  }
+  };
 
-  async getMovieById(id) {
+  getMovieById = async (id) => {
     try {
       return await db("movies").where({ id }).first();
     } catch {
       throw new AppError("Erro ao buscar filme por ID no banco de dados.", 500);
     }
-  }
+  };
 
-  async getMoviePageData(query, page = 1) {
+  getMoviePageData = async (query, page = 1) => {
     const normalizedQuery = normalizeQuery(query);
     try {
       return await db("movie_pages")
@@ -141,11 +151,17 @@ export class MoviesService {
         .andWhere("page_number", page)
         .first();
     } catch {
-      throw new AppError("Erro ao buscar dados da página no banco de dados", 500);
+      throw new AppError(
+        "Erro ao buscar dados da página no banco de dados",
+        500
+      );
     }
-  }
+  };
 
-  async saveMoviePage(query, { page, totalPages, totalResults, movieIds }) {
+  saveMoviePage = async (
+    query,
+    { page, totalPages, totalResults, movieIds }
+  ) => {
     const normalizedQuery = normalizeQuery(query);
     const uniqueIds = [...new Set(movieIds)].filter(Number.isInteger);
 
@@ -180,9 +196,9 @@ export class MoviesService {
         500
       );
     }
-  }
+  };
 
-  async getMoviesByIds(movieIds, sortBy, sortOrder) {
+  getMoviesByIds = async (movieIds, sortBy, sortOrder) => {
     try {
       const query = db("movies").whereIn("id", movieIds).select("*");
 
@@ -194,11 +210,14 @@ export class MoviesService {
 
       return movies;
     } catch {
-      throw new AppError("Erro ao buscar filmes por IDs no banco de dados.", 500);
+      throw new AppError(
+        "Erro ao buscar filmes por IDs no banco de dados.",
+        500
+      );
     }
-  }
+  };
 
-  #normalizeReleaseDate(releaseDate) {
+  #normalizeReleaseDate = (releaseDate) => {
     if (
       !releaseDate ||
       typeof releaseDate !== "string" ||
@@ -211,9 +230,9 @@ export class MoviesService {
     return isNaN(parsedDate)
       ? null
       : new Date(parsedDate).toISOString().split("T")[0];
-  }
+  };
 
-  #applyKeywordFilter(query, keyword) {
+  #applyKeywordFilter = (query, keyword) => {
     query.where((qb) => {
       qb.where("title", "ilike", `%${keyword}%`).orWhere(
         "original_title",
@@ -221,5 +240,5 @@ export class MoviesService {
         `%${keyword}%`
       );
     });
-  }
+  };
 }

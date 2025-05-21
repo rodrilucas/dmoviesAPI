@@ -11,7 +11,7 @@ export class TheMovieDBService {
     this.#TMDB_TOKEN = process.env.TMDB_TOKEN;
   }
 
-  async fetchFromTMDB(endpoint, options = {}) {
+  fetchFromTMDB = async (endpoint, options = {}) => {
     const url = `${this.#TMDB_API_BASE_URL}${endpoint}`;
 
     const response = await fetch(url, {
@@ -37,9 +37,9 @@ export class TheMovieDBService {
     }
 
     return data;
-  }
+  };
 
-  async fetchPopularMovies(totalPages = 1) {
+  fetchPopularMovies = async (totalPages = 1) => {
     const movies = [];
     for (let page = 1; page <= totalPages; page++) {
       const data = await this.fetchFromTMDB(
@@ -48,9 +48,9 @@ export class TheMovieDBService {
       movies.push(...data.results);
     }
     return movies;
-  }
+  };
 
-  async fetchMovieByQuery(query, page = 1) {
+  fetchMovieByQuery = async (query, page = 1) => {
     const data = await this.fetchFromTMDB(
       `/search/movie?query=${encodeURIComponent(
         query
@@ -61,9 +61,9 @@ export class TheMovieDBService {
       total_pages: data.total_pages,
       total_results: data.total_results,
     };
-  }
+  };
 
-  async fetchMovieById(id) {
+  fetchMovieById = async (id) => {
     try {
       return await this.fetchFromTMDB(`/movie/${id}?language=pt-BR`);
     } catch (error) {
@@ -72,5 +72,5 @@ export class TheMovieDBService {
       }
       throw error;
     }
-  }
+  };
 }
