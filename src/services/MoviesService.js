@@ -1,223 +1,132 @@
-import { db } from "../db/knex.js";
-import { normalizeQuery } from "../utils/normalizeQuery.js";
 import { AppError } from "../errors/AppError.js";
+import { MoviesRepository } from "../repositories/moviesRepository.js";
+import { normalizeQuery } from "../utils/normalizeQuery.js";
 
 export class MoviesService {
-  saveOrUpdateMovies = async (movies) => {
+  #repository = new MoviesRepository();
+
+  async saveOrUpdateMovies(movies) {
     if (!Array.isArray(movies)) {
       throw new AppError("A lista de filmes deve ser um array.", 400);
     }
 
     try {
       await Promise.all(movies.map((movie) => this.saveOrUpdateMovie(movie)));
-    } catch {
-      throw new AppError(
-        "Erro ao salvar ou atualizar filmes no banco de dados.",
-        500
-      );
+    } catch (err) {
+      throw new AppError("Erro interno do servidor", 500);
     }
-  };
+  }
 
-  saveOrUpdateMovie = async (movie) => {
+  async saveOrUpdateMovie(movie) {
     if (!movie || typeof movie !== "object") {
-      throw new AppError("Movie deve ser um objeto.");
+      throw new AppError("Movie deve ser um objeto.", 400);
     }
 
     try {
       const releaseDate = this.#normalizeReleaseDate(movie.release_date);
-
-      await db("movies")
-        .insert({
-          ...movie,
-          release_date: releaseDate,
-        })
-        .onConflict("id")
-        .merge();
-    } catch {
-      throw new AppError(
-        "Erro ao salvar ou atualizar filme no banco de dados.",
-        500
-      );
+      await this.#repository.upsert({
+        ...movie,
+        release_date: releaseDate,
+      });
+    } catch (err) {
+      throw new AppError("Erro interno do servidor", 500);
     }
-  };
+  }
 
-  getMoviesPaginated = async (page = 1, limit = 20, sortBy, sortOrder) => {
+  async getMoviesPaginated(page, limit, sortBy, sortOrder) {
     try {
-      let query = db("movies");
-
-      if (page && limit) {
-        const offset = (page - 1) * limit;
-        query = query.limit(limit).offset(offset);
-      }
-
-      if (sortBy && sortOrder) {
-        query.whereNotNull(sortBy).orderBy(sortBy, sortOrder);
-      }
-
-      const movies = await query;
-      let totalMovies = movies.length;
-      let totalPages = limit ? Math.ceil(totalMovies / limit) : 1;
+      const movies = await this.#repository.findAllPaginated(
+        page,
+        limit,
+        sortBy,
+        sortOrder
+      );
 
       return {
-        totalPages,
-        totalMovies,
+        totalPages: Math.ceil(movies.length / limit),
+        totalMovies: movies.length,
         movies,
       };
-    } catch {
-      throw new AppError(
-        "Erro ao buscar filmes paginados no banco de dados.",
-        500
-      );
+    } catch (error) {
+      throw new AppError("Erro interno do servidor", 500);
     }
-  };
-  
-  getMoviesByFilterPaginated = async (filters) => {
+  }
+
+  async getMovieById(id) {
     try {
-      let query = db("movies");
+      const movie = await this.#repository.findById(id);
+      if (!movie) throw new AppError("Filme não encontrado", 404);
+      return movie;
+    } catch (error) {
+      throw new AppError("Erro interno do servidor", 500);
+    }
+  }
 
-      const conditions = [
-        filters.startYear && ["release_date", ">=", filters.startYear],
-        filters.endYear && ["release_date", "<=", filters.endYear],
-        filters.language && ["original_language", "=", filters.language],
-        filters.rating && ["vote_average", ">=", filters.rating],
-        filters.avaliation && ["vote_count", ">=", filters.avaliation],
-        filters.includeAdult === false && ["adult", false],
-      ].filter(Boolean);
+  async getSuggestionsByKeyword(keyword, limit = 5) {
+    try {
+      return this.#repository.findSuggestions(keyword, limit);
+    } catch (error) {
+      throw new AppError("Erro interno do servidor", 500);
+    }
+  }
 
-      conditions.forEach(([field, op, value]) => {
-        query.where(field, op, value);
-      });
+  async getMoviesByIds(movieIds, sortBy, sortOrder) {
+    try {
+      const movies = this.#repository.findByIds(movieIds, sortBy, sortOrder);
+      return movies;
+    } catch (error) {
+      throw new AppError("Erro interno do servidor", 500);
+    }
+  }
 
-      if (filters.keyword) {
-        this.#applyKeywordFilter(query, filters.keyword);
-      }
-
-      if (filters.genres?.length) {
-        query.whereRaw(
-          `genre_ids && ARRAY[${filters.genres.join(",")}]::int[]`
-        );
-      }
-
-      if (filters.sort?.by && filters.sort?.order) {
-        query
-          .whereNotNull(filters.sort.by)
-          .orderBy(filters.sort.by, filters.sort.order);
-      }
-
-      const offset = (filters.page - 1) * filters.limit;
-      query.limit(filters.limit).offset(offset);
-
-      const movies = await query;
+  async getMoviesByFilterPaginated(filters) {
+    try {
+      const movies = await this.#repository.findByFilterPaginated(filters);
       const totalMovies = movies.length;
       const totalPages = Math.ceil(totalMovies / filters.limit);
 
-      return {
-        totalPages,
-        totalMovies,
-        movies,
-      };
+      return { totalPages, totalMovies, movies };
     } catch (err) {
-      throw new AppError("Erro ao filtrar filmes no banco de dados.", 500);
+      throw new AppError("Erro interno do servidor", 500);
     }
-  };
+  }
 
-  getSuggestionsByKeyword = async (keyword, limit = 5) => {
+  async getMoviePageData(query, page = 1) {
     try {
-      const query = db("movies")
-        .whereILike("title", `%${keyword}%`)
-        .orWhereILike("original_title", `%${keyword}%`)
-        .select("id", "title")
-        .limit(limit);
-      const results = await query;
-      return results;
-    } catch (err) {
-      throw new AppError("Erro ao buscar sugestões no banco de dados.", 500);
+      const normalized = normalizeQuery(query);
+      return this.#repository.getMoviePage(normalized, page);
+    } catch (error) {
+      throw new AppError("Erro interno do servidor", 500);
     }
-  };
+  }
 
-  getMovieById = async (id) => {
-    try {
-      return await db("movies").where({ id }).first();
-    } catch {
-      throw new AppError("Erro ao buscar filme por ID no banco de dados.", 500);
-    }
-  };
-
-  getMoviePageData = async (query, page = 1) => {
-    const normalizedQuery = normalizeQuery(query);
-    try {
-      return await db("movie_pages")
-        .where("normalized_query", normalizedQuery)
-        .andWhere("page_number", page)
-        .first();
-    } catch {
-      throw new AppError(
-        "Erro ao buscar dados da página no banco de dados",
-        500
-      );
-    }
-  };
-
-  saveMoviePage = async (
-    query,
-    { page, totalPages, totalResults, movieIds }
-  ) => {
-    const normalizedQuery = normalizeQuery(query);
+  async saveMoviePage(query, { page, totalPages, totalResults, movieIds }) {
+    const normalized = normalizeQuery(query);
     const uniqueIds = [...new Set(movieIds)].filter(Number.isInteger);
 
-    if (uniqueIds.length === 0) return null;
+    if (!uniqueIds.length) return null;
 
     try {
-      const existing = await db("movie_pages")
-        .where("normalized_query", normalizedQuery)
-        .andWhere("page_number", page)
-        .first();
+      const existing = await this.#repository.getMoviePage(normalized, page);
 
-      if (existing) {
-        return existing;
-      }
+      if (existing) return existing;
 
-      await db("movie_pages").insert({
+      await this.#repository.saveMoviePage({
         query,
-        normalized_query: normalizedQuery,
+        normalized_query: normalized,
         page_number: page,
         total_pages: totalPages,
         total_results: totalResults,
         movie_ids: uniqueIds,
       });
 
-      return await db("movie_pages")
-        .where("normalized_query", normalizedQuery)
-        .andWhere("page_number", page)
-        .first();
-    } catch (err) {
-      throw new AppError(
-        "Erro ao salvar ou atualizar a página de filmes no banco de dados.",
-        500
-      );
+      return this.#repository.getMoviePage(normalized, page);
+    } catch (error) {
+      throw new AppError("Erro interno do servidor", 500);
     }
-  };
+  }
 
-  getMoviesByIds = async (movieIds, sortBy, sortOrder) => {
-    try {
-      const query = db("movies").whereIn("id", movieIds).select("*");
-
-      if (sortBy && sortOrder) {
-        query.orderBy(sortBy, sortOrder);
-      }
-
-      const movies = await query;
-
-      return movies;
-    } catch {
-      throw new AppError(
-        "Erro ao buscar filmes por IDs no banco de dados.",
-        500
-      );
-    }
-  };
-
-  #normalizeReleaseDate = (releaseDate) => {
+  #normalizeReleaseDate(releaseDate) {
     if (
       !releaseDate ||
       typeof releaseDate !== "string" ||
@@ -230,9 +139,9 @@ export class MoviesService {
     return isNaN(parsedDate)
       ? null
       : new Date(parsedDate).toISOString().split("T")[0];
-  };
+  }
 
-  #applyKeywordFilter = (query, keyword) => {
+  #applyKeywordFilter(query, keyword) {
     query.where((qb) => {
       qb.where("title", "ilike", `%${keyword}%`).orWhere(
         "original_title",
@@ -240,5 +149,5 @@ export class MoviesService {
         `%${keyword}%`
       );
     });
-  };
+  }
 }
